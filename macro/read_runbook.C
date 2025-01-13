@@ -13,7 +13,7 @@ void test_data_read_write()
                           {"5678", {{"Temperature", "999"}, {"Voltage", "55"}}}});
 }
 
-void read_runbook(const char *filename = "Run Book [2024][dRICH][testbeam] Run Book - RunBook.csv")
+void read_runbook(const char *filename = "../data/Run Book [2024][dRICH][testbeam] Run Book - RunBook.csv")
 {
 
     std::ifstream file_date(filename);
@@ -39,7 +39,6 @@ void read_runbook(const char *filename = "Run Book [2024][dRICH][testbeam] Run B
     getline(file_date, line); // remove the 3rd line
     while (std::getline(iss_key, field_key, ','))
     {
-
         if (!field_key.empty())
             keys.push_back({field_key, "-"}); // second value is for default value will be updated later
     }
