@@ -37,3 +37,6 @@
 
 # log
 *.log
+
+# root files
+*.root
