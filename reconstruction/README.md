@@ -1,1 +1,0 @@
-# sipm4eic-testbeam2023-analysis

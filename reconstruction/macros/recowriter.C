@@ -1,7 +1,7 @@
 #include "../lib/lightio.h"
 #include "../lib/mapping.h"
 
-void recowriter(std::string lightdata_infilename = "/home/nrubini/ePIC/sipm4eic-testbeam2023-analysis/Data/20231010-084623/lightdata.root", std::string recodata_outfilename = "/home/nrubini/ePIC/sipm4eic-testbeam2023-analysis/Data/20231010-084623/recodata.root")
+void recowriter(std::string lightdata_infilename = "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/Data/20231010-154910/lightdata.root", std::string recodata_outfilename = "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/Data/20231010-154910/recodata.root")
 {
 
   /** read input data **/

@@ -87,7 +87,7 @@ bool framer::next_spill()
 	if (!_part_mask.count(device)) _part_mask[device] = 0x0;
 	_part_mask[device] |= (1 << fifo);
 	if (data.coarse_time_clock() == 0xdeadbeef) {
-	  if (!_dead_mask.count(device)) _dead_mask[device] = 0x0;
+	  if (!.count(device)) _dead_mask[device] = 0x0;
 	  _dead_mask[device] |= (1 << fifo);
 	}
       }            
