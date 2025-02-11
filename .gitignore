@@ -35,8 +35,16 @@
 *.vscode
 *.DS_Store
 
-# log
+# log or text
 *.log
+*.txt
+
+# images and documents
+*.png
+*.pdf
 
 # root files
 *.root
+
+# data directory
+Data/
