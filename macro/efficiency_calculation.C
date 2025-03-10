@@ -7,18 +7,18 @@ void efficiency_calculation(std::string filename = "/Users/nrubini/Analysis/ePIC
     sipm4eic::lightio io;
     io.read_from_tree(filename);
 
-    //
+    //  Plotting random walk
     TRandom *g_random = new TRandom();
 
     //  Output histograms
     TH2F *h_deadmask = new TH2F("h_deadmask", ";x (mm);y (mm)", 594, -99, 99, 594, -99, 99);
     TH2F *h_partmask = new TH2F("h_partmask", ";x (mm);y (mm)", 594, -99, 99, 594, -99, 99);
-    TH2F *h_goodpart = new TH2F("h_goodpart", ";x (mm);y (mm)", 594, -99, 99, 594, -99, 99);
+    TH2F *h_goodpart = new TH2F("h_goodpart", ";x (mm);y (mm)", 594, -99, 99, 594, -99, 99); 
 
     //  Loop over spills
     while (io.next_spill())
     {
-        auto participating_map = io.get_active_fifos();
+        auto participating_map = io.get_good_fifos();
         for (auto [device, fifo] : participating_map)
             for (auto [i_fifo, active_fifo] : fifo)
                 if (active_fifo)

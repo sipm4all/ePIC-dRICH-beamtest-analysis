@@ -48,6 +48,10 @@ namespace sipm4eic
     //
     std::map<int, std::map<int, int>> active_device_fifos; // Decode map indicating active fifos
     std::map<int, std::map<int, int>> dead_device_fifos;   // Decode map indicating active fifos
+    std::map<int, std::map<int, int>> good_device_fifos;   // Merge decoded maps: participating minus dead ones
+    std::map<std::array<float, 2>, int> active_positions;  // Use participating fifos to get participating positions
+    std::map<std::array<float, 2>, int> dead_positions;    // Use dead fifos to get dead positions
+    std::map<std::array<float, 2>, int> good_positions;    // Merge positions: participating minus dead ones
     //
     //  --- Constructor
     lightio() = default;
@@ -93,8 +97,21 @@ namespace sipm4eic
     //  --- Getters for active and dead masks
     std::map<int, std::map<int, int>> get_active_fifos() { return active_device_fifos; };
     std::map<int, int> get_active_fifos(int device) { return active_device_fifos[device]; };
+    std::map<std::array<float, 2>, int> get_active_positions() { return active_positions; };
     std::map<int, std::map<int, int>> get_dead_fifos() { return dead_device_fifos; };
     std::map<int, int> get_dead_fifos(int device) { return dead_device_fifos[device]; };
+    std::map<std::array<float, 2>, int> get_dead_positions() { return dead_positions; };
+    std::map<int, std::map<int, int>> get_good_fifos() { return good_device_fifos; };
+    std::map<int, int> get_good_fifos(int device) { return good_device_fifos[device]; };
+    std::map<std::array<float, 2>, int> get_good_positions() { return good_positions; };
+    //  Private getters
+    TFile *get_file() const { return file; }
+    TTree *get_tree() const { return tree; }
+    int get_spill_current() const { return spill_current; }
+    int get_frame_current() const { return frame_current; }
+    int get_trigger0_offset() const { return trigger0_offset; }
+    int get_timing_offset() const { return timing_offset; }
+    int get_cherenkov_offset() const { return cherenkov_offset; }
     //
     //  --- Setters
     // --- Setters for Part Variables ---
@@ -128,6 +145,18 @@ namespace sipm4eic
     void set_cherenkov_coarse(int index, unsigned char value) { cherenkov_coarse[index] = value; }
     void set_cherenkov_fine(int index, unsigned char value) { cherenkov_fine[index] = value; }
     void set_cherenkov_tdc(int index, unsigned char value) { cherenkov_tdc[index] = value; }
+    //  Set positions
+    void set_active_position(const std::array<float, 2> &key, int value) { active_positions[key] = value; }
+    void set_dead_position(const std::array<float, 2> &key, int value) { dead_positions[key] = value; }
+    void set_good_position(const std::array<float, 2> &key, int value) { good_positions[key] = value; }
+    //  Private setters
+    void set_file(TFile *f) { file = f; }
+    void set_tree(TTree *t) { tree = t; }
+    void set_spill_current(int value) { spill_current = value; }
+    void set_frame_current(int value) { frame_current = value; }
+    void set_trigger0_offset(int value) { trigger0_offset = value; }
+    void set_timing_offset(int value) { timing_offset = value; }
+    void set_cherenkov_offset(int value) { cherenkov_offset = value; }
 
     void new_spill(unsigned int ispill);
     void new_frame(unsigned int iframe);
@@ -149,6 +178,8 @@ namespace sipm4eic
     void reset() { spill_current = frame_current = 0; };
     void decode_part_device_fifos();
     void decode_dead_device_fifos();
+    void decode_good_device_fifos();
+    void decode_good_positions();
     void decode_device_fifos()
     {
       decode_part_device_fifos();
@@ -181,6 +212,7 @@ namespace sipm4eic
 
     std::map<std::array<unsigned char, 2>, std::vector<lightdata>> timing_map;
     std::map<std::array<unsigned char, 2>, std::vector<lightdata>> cherenkov_map;
+
   };
 
   void
@@ -369,7 +401,7 @@ namespace sipm4eic
     timing_offset = 0;
     cherenkov_offset = 0;
 
-    decode_device_fifos();
+    decode_good_device_fifos();
 
     ++spill_current;
     return true;
@@ -452,4 +484,13 @@ namespace sipm4eic
     }
   }
 
+  void
+  lightio::decode_good_device_fifos()
+  {
+    decode_part_device_fifos();
+    decode_dead_device_fifos();
+    for (auto [target_device, fifos] : active_device_fifos)
+      for (auto [current_fifo, state] : fifos)
+        good_device_fifos[target_device][current_fifo] = state * !(dead_device_fifos[target_device][current_fifo]);
+  }
 } /** namespace sipm4eic **/

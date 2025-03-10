@@ -219,7 +219,7 @@ namespace sipm4eic
     std::vector<std::array<int, 3>> result;
     int target_device = device;
     int target_chip = fifo / 4;
-    int target_chip_fifo = fifo %4;
+    int target_chip_fifo = fifo % 4;
     auto target_pdu_matrix = pdu_matrix_map[{target_device, target_chip}];
     if (target_chip > 5 || target_pdu_matrix[0] == 0 || target_pdu_matrix[1] == 0)
       return {{-1, -1, -1}};
@@ -260,6 +260,27 @@ namespace sipm4eic
     for (auto current_geo : fifo_geo)
       result.push_back(get_position(current_geo));
     return result;
+  }
+
+  void decode_good_positions(lightio &io)
+  {
+    //  Active
+    for (auto [device, fifo] : io.get_active_fifos())
+      for (auto [i_fifo, active_fifo] : fifo)
+        for (auto current_position : get_fifo_position(device, i_fifo))
+          io.set_active_position(current_position, active_fifo);
+
+    //  Dead
+    for (auto [device, fifo] : io.get_dead_fifos())
+      for (auto [i_fifo, active_fifo] : fifo)
+        for (auto current_position : get_fifo_position(device, i_fifo))
+          io.set_dead_position(current_position, active_fifo);
+
+    //  Good
+    for (auto [device, fifo] : io.get_good_fifos())
+      for (auto [i_fifo, active_fifo] : fifo)
+        for (auto current_position : get_fifo_position(device, i_fifo))
+          io.set_good_position(current_position, active_fifo);
   }
 
 }

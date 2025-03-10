@@ -27,6 +27,7 @@ namespace testbeam
     TFile *current_file = nullptr;
     float clustering_point_max_distance;
     float clustering_r_point_max_distance;
+    float clustering_bkg_point_max_distance;
     float clustering_cluster_max_distance;
     std::array<float, 2> common_center;
     std::array<float, 2> timing_center_sigma;
@@ -39,6 +40,7 @@ namespace testbeam
     float get_y(int index) const { return current_hit.y[index]; }
     float get_t(int index) const { return current_hit.t[index]; }
     float get_radius(int index, std::array<float, 2> center = {0., 0.}) const;
+    float get_phi(int index, std::array<float, 2> center = {0., 0.}) const;
     float get_average_radius(std::vector<int> cluster, std::array<float, 2> center = {0., 0.}) const;
     TTree *get_tree() const { return current_tree; }
     TFile *get_file() const { return current_file; }
@@ -73,6 +75,10 @@ namespace testbeam
     void set_available_SiPMs(std::map<std::array<float, 2>, int> value) { available_SiPMs = value; }
     void set_available_SiPM(std::array<float, 2> value) { available_SiPMs[value] = 1; }
 
+    //  --- Point calculations
+    float get_r_delta(int i_index, int j_index, std::array<float, 2> center = {0., 0.});
+    float get_phi_delta(int i_index, int j_index, std::array<float, 2> center = {0., 0.});
+
     //  --- Selection
     std::array<std::vector<int>, 2> select_points(std::array<float, 4> center, std::array<float, 4> tolerance);
     bool is_dcr(int index) { return fabs(get_t(index) - get_timing_center()) > 4 * get_timing_sigma(); }
@@ -93,6 +99,7 @@ namespace testbeam
     std::vector<std::vector<int>> find_clusters(std::map<int, std::map<int, float>> &admissible_pairs);
     std::vector<std::vector<int>> get_clusters(float max_distance = -1);
     std::vector<std::vector<int>> get_r_clusters(float max_distance = -1);
+    std::vector<std::vector<int>> get_bkg_clusters(float max_distance = -1);
     std::vector<std::vector<int>> merge_clusters(float max_distance = -1);
     std::vector<std::vector<int>> get_merged_clusters();
     std::vector<std::vector<int>> get_ring_seed();
@@ -108,7 +115,7 @@ namespace testbeam
     TEllipse *plot_circle(fit_circle_result parameters, int line_color = kBlack, int line_style = kSolid, int line_width = 1);
 
     //  --- Utility
-    void set_up_global_variables();
+    void set_up_global_variables(int event_cut = 10000);
 
     //  --- Constructor ---
     data(const std::string &infilename)
@@ -119,6 +126,7 @@ namespace testbeam
       clustering_point_max_distance = 8;
       clustering_cluster_max_distance = 8;
       clustering_r_point_max_distance = 8;
+      clustering_bkg_point_max_distance = 3.5;
       common_center = {0., 0.};
       set_up_global_variables();
     }
@@ -172,6 +180,37 @@ std::vector<std::array<std::array<float, 2>, 2>> testbeam::measure_resolution_in
 }
 
 //  --- --- testbeam::data
+
+//  --- --- --- Getters
+float testbeam::data::get_phi(int index, std::array<float, 2> center = {0., 0.}) const
+{
+  std::array<float, 2> null_center = {0., 0.};
+  if (center == null_center)
+    center = common_center;
+  return (360/(TMath::Pi()))*TMath::ATan2(get_y(index) - center[0], get_x(index) - center[1]);
+}
+
+//  --- --- --- Point calculations
+float testbeam::data::get_r_delta(int i_index, int j_index, std::array<float, 2> center = {0., 0.})
+{
+  std::array<float, 2> null_center = {0., 0.};
+  if (center == null_center)
+    center = common_center;
+  return get_radius(i_index, center) - get_radius(j_index, center);
+}
+float testbeam::data::get_phi_delta(int i_index, int j_index, std::array<float, 2> center = {0., 0.})
+{
+  std::array<float, 2> null_center = {0., 0.};
+  if (center == null_center)
+    center = common_center;
+  auto i_phi = get_phi(i_index, center);
+  auto j_phi = get_phi(j_index, center);
+  auto delta_phi = i_phi - j_phi;
+  delta_phi = delta_phi > 180 ? delta_phi - 360 : delta_phi;
+  delta_phi = delta_phi < -180 ? delta_phi + 360 : delta_phi;
+  return delta_phi;
+}
+
 //  --- --- --- Selection
 //  [0] selected points [1] rejected points
 std::array<std::vector<int>, 2> testbeam::data::select_points(std::array<float, 4> center, std::array<float, 4> tolerance)
@@ -406,6 +445,25 @@ std::vector<std::vector<int>> testbeam::data::get_r_clusters(float max_distance)
             { return a.size() > b.size(); });
   return result;
 }
+std::vector<std::vector<int>> testbeam::data::get_bkg_clusters(float max_distance)
+{
+  max_distance = max_distance < 0 ? clustering_bkg_point_max_distance : max_distance;
+  std::map<int, std::map<int, float>> admissible_pairs;
+  for (auto ipnt = 0; ipnt < get_n(); ipnt++)
+  {
+    for (auto jpnt = ipnt + 1; jpnt < get_n(); jpnt++)
+    {
+      auto current_distance = get_distance(ipnt, jpnt, {1., 1., 0.});
+      if (current_distance > max_distance)
+        continue;
+      admissible_pairs[ipnt][jpnt] = current_distance;
+    }
+  }
+  auto result = find_clusters(admissible_pairs);
+  std::sort(result.begin(), result.end(), [](const std::vector<int> &a, const std::vector<int> &b)
+            { return a.size() > b.size(); });
+  return result;
+}
 std::vector<std::vector<int>> testbeam::data::merge_clusters(float max_distance)
 {
   max_distance = max_distance < 0 ? clustering_cluster_max_distance : max_distance;
@@ -514,7 +572,7 @@ TEllipse *testbeam::data::plot_circle(fit_circle_result parameters, int line_col
 }
 
 //  --- --- --- Utility
-void testbeam::data::set_up_global_variables()
+void testbeam::data::set_up_global_variables(int event_cut)
 {
   //  iterator for events
   auto iev = 0;
@@ -560,14 +618,19 @@ void testbeam::data::set_up_global_variables()
     if (merged_cluster_points.size() != 1)
       continue;
     add_data_graph(data_graph_target, merged_cluster_points[0]);
+    // cut after max event
+    if (iev > event_cut)
+      break;
   }
 
   //  Fit the cumulativeevent clusters
   auto fit_circle_result = fit_circle(data_graph_target);
 
   //  Fit the time distribution
+  TCanvas *dump = new TCanvas();
   time_cut->Fit("gaus", "IMESQ");
   auto gaus_fit = time_cut->GetFunction("gaus");
+  delete dump;
 
   //  Set the gloabl variables
   set_common_center({fit_circle_result[0][0], fit_circle_result[1][0]});

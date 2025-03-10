@@ -13,47 +13,32 @@ std::vector<std::string> devices = {
     "kc705-198",
     "kc705-207"};
 
-void lightwriter(std::vector<std::string> filenames, std::string outfilename, std::string fineoutfilename, unsigned int max_spill = kMaxUInt, bool verbose = false)
+void lightwriter(std::vector<std::string> filenames, std::string outfilename, std::string fineoutfilename, unsigned int max_spill = kMaxUInt, bool lightdata_dcr = false, bool verbose = false)
 {
-
-  /**
-   ** CREATE OUTPUT TREE
-   **/
-
+  //  Create output TTree
   sipm4eic::lightio io;
   io.write_to_tree(outfilename);
 
-  /**
-   ** FINE OUTPUT
-   **/
-
+  //  Fine calibration
   std::map<int, TH2F *> h_fine_device;
 
-  /**
-   ** INITIALIZE FRAMER AND PROCESS
-   **/
-
+  // Framer
   std::cout << " --- initialize framer: frame size = " << frame_size << std::endl;
   sipm4eic::framer framer(filenames, frame_size);
   framer.verbose(verbose);
   framer.set_trigger_coarse_offset(192, 112);
 
-  /** loop over spills **/
+  // loop over spills
   int n_spills = 0, n_frames = 0;
   for (int ispill = 0; ispill < max_spill && framer.next_spill(); ++ispill)
   {
-
-    /**
-     ** FINE FILL
-     **/
-
-    /** loop over frames **/
+    //  Loop over frames
     for (auto &frame : framer.frames())
     {
       auto iframe = frame.first;
       auto aframe = frame.second;
 
-      /** fill hits **/
+      //  Loop over hits
       for (auto &device : aframe)
       {
         auto idevice = device.first;
@@ -82,13 +67,10 @@ void lightwriter(std::vector<std::string> filenames, std::string outfilename, st
           }
         }
 
-      } /** end of loop over devices and hits **/
-    } /** end of loop over frames **/
+      } // end of loop over devices and hits
+    } // end of loop over frames
 
-    /**
-     ** LIGHT DATA
-     **/
-
+    // Lightdata
     io.new_spill(ispill);
 
     for (auto &part : framer.part_mask())
@@ -104,30 +86,36 @@ void lightwriter(std::vector<std::string> filenames, std::string outfilename, st
       io.add_dead(idevice, amask);
     }
 
-    /** loop over frames **/
+    auto stop_recording_frames = false;
+
+    // loop over frames
     for (auto &frame : framer.frames())
     {
+      if (stop_recording_frames)
+        continue;
       auto iframe = frame.first;
       auto aframe = frame.second;
+      if (iframe > 20000 && lightdata_dcr)
+        stop_recording_frames = true;
 
       io.new_frame(iframe);
 
-      /** selection on Luca's trigger, device 192 **/
-      if (aframe[192].triggers.size() != 1)
+      //  trigger selection
+      if (aframe[192].triggers.size() != 1 && !lightdata_dcr)
         continue;
 
-      /** selection on timing scintillators, device 207 **/
+      //  timing selection
       auto nsipm4 = aframe[207].hits[4].size();
       auto nsipm5 = aframe[207].hits[5].size();
-      if (nsipm4 == 0 && nsipm5 == 0)
+      if (nsipm4 == 0 && nsipm5 == 0 && !lightdata_dcr)
         continue;
 
-      /** fill trigger0 hits **/
+      //  fill trigger hits
       auto trigger0 = aframe[192].triggers;
       for (auto &trigger : trigger0)
         io.add_trigger0(trigger.coarse_time_clock() - iframe * frame_size);
 
-      /** fill timing hits **/
+      //  fill timing hits
       for (auto &chip : aframe[207].hits)
       {
         auto ichip = chip.first;
@@ -144,7 +132,7 @@ void lightwriter(std::vector<std::string> filenames, std::string outfilename, st
         }
       }
 
-      /** fill cherenkov hits **/
+      //  fill cherenkov hits
       for (auto &device : aframe)
       {
         auto idevice = device.first;
@@ -167,20 +155,16 @@ void lightwriter(std::vector<std::string> filenames, std::string outfilename, st
           }
         }
 
-      } /** end of loop over devices and hits **/
+      } // end of loop over devices and hits
 
       io.add_frame();
 
-    } /** end of loop over frames **/
+    } //  end loop over frames
 
     io.fill();
     ++n_spills;
 
-  } /** end of loop over spills **/
-
-  /**
-   ** WRITE OUTPUT TO FILE
-   **/
+  } // end loop over spills
 
   std::cout << " --- writing light data output file: " << outfilename << std::endl;
   io.write_and_close();

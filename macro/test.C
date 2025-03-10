@@ -1,6 +1,74 @@
 #include "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/reconstruction/lib/testbeam.h"
 #include "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/reconstruction/macros/recowriter.C"
 
+void test()
+{
+    auto f_dcr = new TFile("dcr_test_dcr.root");
+    auto graph_dcr = (TGraphErrors *)(f_dcr->Get("g_frequencies"));
+    auto f_nodcr = new TFile("dcr_test_nodcr.root");
+    auto graph_nodcr = (TGraphErrors *)(f_nodcr->Get("g_frequencies"));
+
+    TH2F *h_dcr = new TH2F("h_dcr", ";x (mm);y (mm)", 1980, -99, 99, 1980, -99, 99);
+    TH2F *h_nodcr = new TH2F("h_nodcr", ";x (mm);y (mm)", 1980, -99, 99, 1980, -99, 99);
+    TH2F *h_ratdcr = new TH2F("h_ratdcr", ";x (mm);y (mm)", 1980, -99, 99, 1980, -99, 99);
+    TH1F *h_rat_val = new TH1F("h_rat_val", "", 4000, 0, 4000);
+
+    TGraphErrors *g_freq_corr = new TGraphErrors();
+    g_freq_corr->GetXaxis()->SetTitle("DCR start of spill (Hz)");
+    g_freq_corr->GetYaxis()->SetTitle("DCR out-of-time (Hz)");
+
+    TRandom *g_random = new TRandom();
+
+    for (auto ipnt = 0; ipnt < graph_dcr->GetN(); ipnt++)
+    {
+        auto pos_x = graph_dcr->GetPointX(ipnt);
+        auto pos_y = graph_dcr->GetPointY(ipnt);
+        auto dcr_v = graph_dcr->GetErrorX(ipnt);
+        auto dcr_e = graph_dcr->GetErrorY(ipnt);
+        auto nodcr_v = graph_nodcr->GetErrorX(ipnt);
+        auto nodcr_e = graph_nodcr->GetErrorY(ipnt);
+
+        g_freq_corr->SetPoint(ipnt, dcr_v, nodcr_v);
+        // g_freq_corr->SetPointError(ipnt, dcr_e, nodcr_e);
+
+        /*
+                for (auto ipnt = 0; ipnt < dcr_v * 10; ipnt++)
+                    h_dcr->Fill(pos_x + 1.5 * g_random->Uniform(-1, 1), pos_y + 1.5 * g_random->Uniform(-1, 1));
+                for (auto ipnt = 0; ipnt < nodcr_v; ipnt++)
+                    h_nodcr->Fill(pos_x + 1.5 * g_random->Uniform(-1, 1), pos_y + 1.5 * g_random->Uniform(-1, 1));
+                for (auto ipnt = 0; ipnt < nodcr_v / dcr_v; ipnt++)
+                    h_ratdcr->Fill(pos_x + 1.5 * g_random->Uniform(-1, 1), pos_y + 1.5 * g_random->Uniform(-1, 1));
+                    */
+
+        h_rat_val->Fill(nodcr_v / dcr_v);
+    }
+
+    TF1 *fPhotonFitFunction = new TF1("hPhotonFitFunction", "[0]*TMath::Power(([1]/[2]),(x/[2]))*(TMath::Exp(-([1]/[2])))/TMath::Gamma((x/[2])+1)", -10000, 10000);
+    fPhotonFitFunction->SetParameters(30, 60, 20);
+
+    new TCanvas();
+    h_dcr->Draw("COLZ");
+    new TCanvas();
+    h_nodcr->Draw("COLZ");
+    new TCanvas();
+    h_ratdcr->Draw("COLZ");
+    new TCanvas();
+    h_rat_val->Draw("");
+    // h_rat_val->Fit(fPhotonFitFunction);
+
+    new TCanvas();
+    TH1F *hframe = new TH1F("", ";DCR start of spill (Hz);DCR out-of-time (Hz)", 1.e5, 1.e2, 1.e7);
+    hframe->SetMinimum(1.e2);
+    hframe->SetMaximum(1.e7);
+    hframe->Draw();
+    gStyle->SetOptStat(0);
+    gPad->SetLogx();
+    gPad->SetLogy();
+    g_freq_corr->SetMarkerStyle(20);
+    g_freq_corr->Draw("SAME PE ");
+}
+
+/*
 void process_runs(std::string path = "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/Data/20231010-163636/");
 
 void test()
@@ -101,7 +169,6 @@ void process_runs(std::string path)
             continue;
         }
 
-        /*
         auto cluster_points = current_data.get_r_clusters(5);
         if (!cluster_points.size())
         {
@@ -119,7 +186,6 @@ void process_runs(std::string path)
                 hMapTest2->Fill(current_data.get_x(i), current_data.get_y(i));
             continue;
         }
-        */
 
         auto good_points_array = current_data.select_points({current_data.get_common_center_x(), current_data.get_common_center_y(), current_data.get_common_radius(), current_data.get_timing_center()}, {999, 999, 3, 4 * current_data.get_timing_sigma()});
         auto good_points = good_points_array[0];
@@ -258,7 +324,7 @@ void process_runs(std::string path)
     outfile->Close();
 
     return;
-    /*
+
     h_fit_radius->Draw();
     h_fit_radius->Fit("gaus");
     new TCanvas();
@@ -279,5 +345,6 @@ void process_runs(std::string path)
     hMapTest3->Draw("COLZ");
     new TCanvas();
     hMapTest4->Draw("COLZ");
-    */
+
 }
+*/
