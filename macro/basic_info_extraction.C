@@ -1,6 +1,6 @@
 #include "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/reconstruction/lib/testbeam.h"
 
-void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/recodata.root") //fastmc_full
+void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/recodata.filter_rollover.root") // fastmc_full
 {
     //  Load data from run
     testbeam::data current_data(filename);
@@ -18,22 +18,22 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
     hEventCounting->GetXaxis()->SetBinLabel(6, "Evs. w/ bigger clusters w/ more than 20 hits");
     hEventCounting->GetXaxis()->SetBinLabel(7, "Evs. w/o at least 3 hits in radius range");
     hEventCounting->GetXaxis()->SetBinLabel(8, "Accepted events");
-    TH2F *hMapTest0 = new TH2F("hMapTest0", "Evs. w/ less than 4 hits", 100, -100, 100, 100, -100, 100);
-    TH2F *hMapTest1 = new TH2F("hMapTest1", "Evs. w/o clusters", 100, -100, 100, 100, -100, 100);
-    TH2F *hMapTest2 = new TH2F("hMapTest2", "Evs. w/ bigger cluster w/ less than 3 hits", 100, -100, 100, 100, -100, 100);
-    TH2F *hMapTest3 = new TH2F("hMapTest3", "Evs. w/ radius outside range", 100, -100, 100, 100, -100, 100);
-    TH2F *hMapTest4 = new TH2F("hMapTest4", "Evs. w/ bigger clusters w/ more than 20 hits", 100, -100, 100, 100, -100, 100);
-    TH2F *hMapTest5 = new TH2F("hMapTest5", "Evs. w/o at least 3 hits in radius range", 100, -100, 100, 100, -100, 100);
-    TH2F *hMapTest6 = new TH2F("hMapTest6", "Accepted events", 100, -100, 100, 100, -100, 100);
+    TH2F *hEvntEffMap0 = new TH2F("hEvntEffMap0", "Evs. w/ less than 4 hits", 100, -100, 100, 100, -100, 100);
+    TH2F *hEvntEffMap1 = new TH2F("hEvntEffMap1", "Evs. w/o clusters", 100, -100, 100, 100, -100, 100);
+    TH2F *hEvntEffMap2 = new TH2F("hEvntEffMap2", "Evs. w/ bigger cluster w/ less than 3 hits", 100, -100, 100, 100, -100, 100);
+    TH2F *hEvntEffMap3 = new TH2F("hEvntEffMap3", "Evs. w/ radius outside range", 100, -100, 100, 100, -100, 100);
+    TH2F *hEvntEffMap4 = new TH2F("hEvntEffMap4", "Evs. w/ bigger clusters w/ more than 20 hits", 100, -100, 100, 100, -100, 100);
+    TH2F *hEvntEffMap5 = new TH2F("hEvntEffMap5", "Evs. w/o at least 3 hits in radius range", 100, -100, 100, 100, -100, 100);
+    TH2F *hEvntEffMap6 = new TH2F("hEvntEffMap6", "Accepted events", 100, -100, 100, 100, -100, 100);
 
     //  Radius distribution
-    TH1F *h_radius_distribution_all = new TH1F("h_radius_distribution_all", "", 120, -60, 60);
-    TH1F *h_radius_distribution_sig = new TH1F("h_radius_distribution_sig", "", 120, -60, 60);
-    TH1F *h_radius_distribution_bkg = new TH1F("h_radius_distribution_bkg", "", 120, -60, 60);
-    TH1F *h_radius_distribution_dcr = new TH1F("h_radius_distribution_dcr", "", 120, -60, 60);
+    TH1D *h_radius_distribution_all = new TH1D("h_radius_distribution_all", "", 80, -60, 60);
+    TH1F *h_radius_distribution_sig = new TH1F("h_radius_distribution_sig", "", 80, -60, 60);
+    TH1F *h_radius_distribution_bkg = new TH1F("h_radius_distribution_bkg", "", 80, -60, 60);
+    TH1F *h_radius_distribution_dcr = new TH1F("h_radius_distribution_dcr", "", 80, -60, 60);
     TH1F *h_fit_radius = new TH1F("h_fit_radius", "", 1000, 0, 100);
     TH2F *h3_fit_radius = new TH2F("h3_fit_radius", "", 100, -10, 10, 40, 0, 40);
-    TH2F *h2_fit_radius = new TH2F("h2_fit_radius", "", 1000, 0, 100, 40, 0, 40);
+    TH2F *h2_fit_radius = new TH2F("h2_fit_radius", "", 1000, -50, 50, 40, 0, 40);
 
     //  Photon counting
     TH1F *h_photon_counting_DCR = new TH1F("h_photon_counting_DCR", ";N_{#gamma}", 100, 0, 100);
@@ -42,7 +42,7 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
     TH2F *h_photon_counting_bkg_all = new TH2F("h_photon_counting_bkg_all", ";N_{#gamma} (bkg);N_{#gamma} (sig)", 100, 0, 100, 100, 0, 100);
 
     //  Correlations
-    TH2F *h_delta_R_Phi = new TH2F("h_delta_R_Phi", ";#Delta_{#phi};#Delta_{R}", 180, -180, 180, 100, -100, 100);
+    TH2F *h_delta_R_Phi = new TH2F("h_delta_R_Phi", ";#Delta_{#phi};#Delta_{R}", 45, -45, 135, 50, -100, 100);
 
     for (auto iev = 0; iev < current_tree->GetEntries(); iev++)
     {
@@ -55,7 +55,7 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
             for (auto i = 0; i <= 1; i++)
                 hEventCounting->Fill(i);
             for (auto i = 0; i < current_data.get_n(); i++)
-                hMapTest0->Fill(current_data.get_x(i), current_data.get_y(i));
+                hEvntEffMap0->Fill(current_data.get_x(i), current_data.get_y(i));
             continue;
         }
 
@@ -66,7 +66,7 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
             for (auto i = 0; i <= 2; i++)
                 hEventCounting->Fill(i);
             for (auto i = 0; i < current_data.get_n(); i++)
-                hMapTest1->Fill(current_data.get_x(i), current_data.get_y(i));
+                hEvntEffMap1->Fill(current_data.get_x(i), current_data.get_y(i));
             continue;
         }
 
@@ -76,7 +76,7 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
             for (auto i = 0; i <= 3; i++)
                 hEventCounting->Fill(i);
             for (auto i = 0; i < current_data.get_n(); i++)
-                hMapTest2->Fill(current_data.get_x(i), current_data.get_y(i));
+                hEvntEffMap2->Fill(current_data.get_x(i), current_data.get_y(i));
             continue;
         }
 
@@ -88,7 +88,7 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
                 for (auto i = 0; i <= 4; i++)
                     hEventCounting->Fill(i);
                 for (auto i = 0; i < current_data.get_n(); i++)
-                    hMapTest3->Fill(current_data.get_x(i), current_data.get_y(i));
+                    hEvntEffMap3->Fill(current_data.get_x(i), current_data.get_y(i));
                 continue;
             }
 
@@ -100,7 +100,7 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
             for (auto i = 0; i <= 5; i++)
                 hEventCounting->Fill(i);
             for (auto i = 0; i < current_data.get_n(); i++)
-                hMapTest4->Fill(current_data.get_x(i), current_data.get_y(i));
+                hEvntEffMap4->Fill(current_data.get_x(i), current_data.get_y(i));
             continue;
         }
 
@@ -111,13 +111,13 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
             for (auto i = 0; i <= 6; i++)
                 hEventCounting->Fill(i);
             for (auto i = 0; i < current_data.get_n(); i++)
-                hMapTest5->Fill(current_data.get_x(i), current_data.get_y(i));
+                hEvntEffMap5->Fill(current_data.get_x(i), current_data.get_y(i));
             continue;
         }
         for (auto i = 0; i <= 7; i++)
             hEventCounting->Fill(i);
         for (auto i = 0; i < current_data.get_n(); i++)
-            hMapTest6->Fill(current_data.get_x(i), current_data.get_y(i));
+            hEvntEffMap6->Fill(current_data.get_x(i), current_data.get_y(i));
 
         //  Correlation test
         for (auto ihit = 0; ihit < current_data.get_n(); ihit++)
@@ -125,12 +125,12 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
             {
                 if (ihit == jhit)
                     continue;
-                h_delta_R_Phi->Fill(current_data.get_phi_delta(ihit, jhit), current_data.get_r_delta(ihit, jhit), 0.5);
+                h_delta_R_Phi->Fill(current_data.get_phi_delta(ihit, jhit), current_data.get_r_delta(ihit, jhit), 0.5*std::min(100.,1.*std::max(0.01,1.*fabs(current_data.get_t_delta(ihit, jhit)))));
             }
 
         //  Fill radius
         h_fit_radius->Fill(current_fit_results[2][0]);
-        h2_fit_radius->Fill(current_fit_results[2][0], good_points.size());
+        h2_fit_radius->Fill(current_fit_results[2][0] - current_data.get_common_radius(), good_points.size());
         auto diff_circle_vals = current_data.diff_circle(good_points);
         for (auto current_diff : diff_circle_vals)
             h3_fit_radius->Fill(current_diff, good_points.size());
@@ -256,19 +256,18 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
 
     new TCanvas();
     h_delta_R_Phi->Draw("COLZ");
-    return;
 
     new TCanvas();
 
-    TFile *outfile = new TFile((path + "/preliminary_test_mc.root").c_str(), "RECREATE");
+    TFile *outfile = new TFile((path + "/preliminary_test.root").c_str(), "RECREATE");
     hEventCounting->Write();
-    hMapTest0->Write();
-    hMapTest1->Write();
-    hMapTest2->Write();
-    hMapTest3->Write();
-    hMapTest4->Write();
-    hMapTest5->Write();
-    hMapTest6->Write();
+    hEvntEffMap0->Write();
+    hEvntEffMap1->Write();
+    hEvntEffMap2->Write();
+    hEvntEffMap3->Write();
+    hEvntEffMap4->Write();
+    hEvntEffMap5->Write();
+    hEvntEffMap6->Write();
 
     h_photon_counting_bkg->Write();
     h_photon_counting_all->Write();
@@ -282,6 +281,9 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
     h_radius_distribution_dcr->Write();
 
     graph->Write();
+
+    h_delta_R_Phi->Scale(1. / current_tree->GetEntries());
+    h_delta_R_Phi->Write();
 
     outfile->Close();
 
@@ -299,22 +301,22 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
     c_ev_selection->cd(1);
     hEventCounting->Draw("");
     c_ev_selection->cd(2);
-    hMapTest6->Draw("COLZ");
+    hEvntEffMap6->Draw("COLZ");
 
     TCanvas *c_ev_selection_map = new TCanvas("c_ev_selection_map", "c_ev_selection_map", 1000, 1000);
     c_ev_selection_map->Divide(3, 3);
     c_ev_selection_map->cd(1);
-    hMapTest0->Draw("COLZ");
+    hEvntEffMap0->Draw("COLZ");
     c_ev_selection_map->cd(2);
-    hMapTest1->Draw("COLZ");
+    hEvntEffMap1->Draw("COLZ");
     c_ev_selection_map->cd(3);
-    hMapTest2->Draw("COLZ");
+    hEvntEffMap2->Draw("COLZ");
     c_ev_selection_map->cd(4);
-    hMapTest3->Draw("COLZ");
+    hEvntEffMap3->Draw("COLZ");
     c_ev_selection_map->cd(5);
-    hMapTest4->Draw("COLZ");
+    hEvntEffMap4->Draw("COLZ");
     c_ev_selection_map->cd(6);
-    hMapTest5->Draw("COLZ");
+    hEvntEffMap5->Draw("COLZ");
 
     TF1 *f_radius_dist = new TF1("f_radius_dist", "[0]*TMath::Gaus(x,[1],[2],kTRUE)+[3]*TMath::Gaus(x,[4],[5],kTRUE)+[6]+[7]*x+[8]*x*x+[9]*x*x*x+[10]*x*x*x*x");
     f_radius_dist->SetParameters(1, 1, 1, 0.33, 10, 4, 0.1, -0.001, 0, 0);
@@ -327,10 +329,13 @@ void basic_info_extraction(std::string filename = "/Users/nrubini/Analysis/ePIC/
     f_radius_dist->SetParName(3, "Norm_gaus_2");
     f_radius_dist->SetParName(4, "Mean_gaus_2");
     f_radius_dist->SetParName(5, "Sigma_gaus_2");
-    f_radius_dist->SetParName(6, "pol3_par0");
-    f_radius_dist->SetParName(7, "pol3_par1");
-    f_radius_dist->SetParName(8, "pol3_par2");
-    f_radius_dist->SetParName(9, "pol3_par3");
+    f_radius_dist->SetParName(6, "pol4_par0");
+    f_radius_dist->SetParName(7, "pol4_par1");
+    f_radius_dist->SetParName(8, "pol4_par2");
+    f_radius_dist->SetParName(9, "pol4_par3");
+    f_radius_dist->SetParName(10, "pol4_par4");
+
+    testbeam::fit_ring_peak(h_radius_distribution_all, -1);
 
     TCanvas *c_radius_resolution = new TCanvas("c_radius_resolution", "c_radius_resolution", 1000, 1000);
     gPad->SetLogy();

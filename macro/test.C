@@ -1,6 +1,199 @@
 #include "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/reconstruction/lib/testbeam.h"
-#include "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/reconstruction/macros/recowriter.C"
 
+//  General physics utilities
+const float alhpa_EM = 1. / 137.055;   // [n.u.]
+const float kElectronMass = 0.0005110; // [GeV]
+const float kMuonMass = 0.1057;        // [GeV]
+const float kPionMass = 0.1396;        // [GeV]
+const float kKaonMass = 0.4937;        // [GeV]
+const float kProtonMass = 0.9383;      // [GeV]
+const float kcLight = 299792458.;      // [m/s]
+
+//  General functions utilities
+// https://root-forum.cern.ch/t/fitting-a-poisson-distribution-to-a-histogram/12078/4
+//  [0] = Normalizing parameter
+//  [1] / [2] -> mean (mu)
+//  x / [2] -> x
+//  Gamma( x / [2] + 1 ) = factorial (x / [2])
+TF1 *fPhotonFitFunction = new TF1("hPhotonFitFunction", "[0]*TMath::Power(([1]/[2]),(x/[2]))*(TMath::Exp(-([1]/[2])))/TMath::Gamma((x/[2])+1)", -1000, 1000);
+TF1 *fDoublePhotonFitFunction = new TF1("fDoublePhotonFitFunction", "[0]*TMath::Power(([1]/[2]),(x/[2]))*(TMath::Exp(-([1]/[2])))/TMath::Gamma((x/[2])+1)+[3]*TMath::Power(([4]/[5]),(x/[5]))*(TMath::Exp(-([4]/[5])))/TMath::Gamma((x/[5])+1)", -1000, 1000);
+
+//  === Kinematics
+inline float get_relativistic_beta(float gamma) { return TMath::Sqrt(1 - gamma * gamma); }
+inline float get_relativistic_beta(float mass, float momentum) { return 1. / sqrt(1 + (mass * mass) / (momentum * momentum)); }
+inline float get_relativistic_gamma(float beta) { return 1. / (TMath::Sqrt(1 - beta * beta)); }
+inline float get_relativistic_gamma(float mass, float momentum) { return get_relativistic_gamma(get_relativistic_beta(mass, momentum)); }
+
+//  === Cherenkov
+//  === === A priori knowledge
+inline float get_theta_cherenkov(float beta, float ref_index) { return TMath::ACos(1. / (beta * ref_index)); }
+inline float get_theta_atan(float radius, float arm_length) { return TMath::ATan(radius / arm_length); }
+inline float get_expected_radius(float mass, float momentum, float ref_index, float arm_length) { return TMath::Tan(get_theta_cherenkov(get_relativistic_beta(mass, momentum), ref_index)) * arm_length; }
+inline float get_relativistic_beta_cherenkov_threshold(float ref_index) { return 1. / ref_index; }
+inline float get_momentum_cherenkov_threshold(float ref_index, float mass) { return mass * get_relativistic_beta_cherenkov_threshold(ref_index) * get_relativistic_gamma(get_relativistic_beta_cherenkov_threshold(ref_index)); }
+inline float get_mass_cherenkov_threshold(float ref_index, float momentum) { return momentum / (get_relativistic_beta_cherenkov_threshold(ref_index) * get_relativistic_gamma(get_relativistic_beta_cherenkov_threshold(ref_index))); }
+inline float get_expected_photons(float ref_index, float mass, float momentum, int z_charge = 1, float lambda_low = 350.e-9, float lambda_high = 500.e-9)
+{
+    return ((2 * TMath::Pi() * z_charge * z_charge * alhpa_EM) * ((1. / lambda_low) - (1. / lambda_high)) * (1. - 1. / (get_relativistic_beta(mass, momentum) * get_relativistic_beta(mass, momentum) * ref_index * ref_index)));
+}
+
+//  === === Mirrors
+inline float get_aerogel_initpoint(float mirror_position, int n_tiles = 2) { return 20 * (n_tiles) + 52 + 262.5 + mirror_position; }
+inline float get_gas_initpoint(float mirror_position) { return (-10 + 1273 - mirror_position); }
+//  === === Measurements
+inline float measure_relativistic_beta(float ref_index, float radius, float arm_length) { return 1. / (ref_index * TMath::Cos(get_theta_atan(radius, arm_length))); }
+inline float measure_arm_length(float ref_index, float mass, float momentum, float radius) { return radius / TMath::Tan(get_theta_cherenkov(get_relativistic_beta(mass, momentum), ref_index)); }
+inline float measure_mass_hypothesis(float momentum, float ref_index, float radius, float arm_length) { return TMath::Sqrt((momentum * momentum) / (measure_relativistic_beta(ref_index, radius, arm_length) * measure_relativistic_beta(ref_index, radius, arm_length)) - (momentum * momentum)); }
+//  === === Graphics
+// inline void plot_prediction(float ref_index, float momentum, float mass, float distance, std::array<float, 2> xy = {0., 0.}) { return plot_circle({xy[0], xy[1], get_expected_radius(mass, momentum, ref_index, distance)}, kRed, kDashed, 2); }
+
+std::array<float, 2>
+eval_with_errors(TGraphErrors *gTarget, float _xtarget)
+{
+    auto iPnt = 0;
+    auto current_x = 1.;
+    auto previous_x = 1.;
+    float interpolated_y = -1.;
+    float interpolated_ey = -1.;
+    for (iPnt = 1; iPnt < gTarget->GetN() - 1; iPnt++)
+    {
+        current_x = gTarget->GetPointX(iPnt);
+        previous_x = gTarget->GetPointX(iPnt - 1);
+        if ((current_x >= _xtarget) && (previous_x <= _xtarget))
+        {
+            break;
+        }
+    }
+    if (iPnt == gTarget->GetN() - 1)
+    {
+        return {interpolated_y, interpolated_ey};
+    }
+    auto coeff_y1 = (_xtarget - previous_x) / (current_x - previous_x);
+    auto coeff_y0 = (current_x - _xtarget) / (current_x - previous_x);
+    interpolated_y = coeff_y1 * gTarget->GetPointY(iPnt) + coeff_y0 * gTarget->GetPointY(iPnt - 1);
+    interpolated_ey = sqrt((coeff_y0 * gTarget->GetErrorY(iPnt)) * (coeff_y0 * gTarget->GetErrorY(iPnt)) + (coeff_y1 * gTarget->GetErrorY(iPnt - 1)) * (coeff_y1 * gTarget->GetErrorY(iPnt - 1)));
+    return {interpolated_y, interpolated_ey};
+}
+std::array<float, 2>
+eval_with_errors(TGraph *gTarget, float _xtarget)
+{
+    auto iPnt = 0;
+    auto current_x = 1.;
+    auto previous_x = 1.;
+    float interpolated_y = -1.;
+    float interpolated_ey = -1.;
+    for (iPnt = 1; iPnt < gTarget->GetN() - 1; iPnt++)
+    {
+        current_x = gTarget->GetPointX(iPnt);
+        previous_x = gTarget->GetPointX(iPnt - 1);
+        if ((current_x >= _xtarget) && (previous_x <= _xtarget))
+        {
+            break;
+        }
+    }
+    if (iPnt == gTarget->GetN() - 1)
+    {
+        return {interpolated_y, interpolated_ey};
+    }
+    auto coeff_y1 = (_xtarget - previous_x) / (current_x - previous_x);
+    auto coeff_y0 = (current_x - _xtarget) / (current_x - previous_x);
+    interpolated_y = coeff_y1 * gTarget->GetPointY(iPnt) + coeff_y0 * gTarget->GetPointY(iPnt - 1);
+    interpolated_ey = 0.;
+    return {interpolated_y, interpolated_ey};
+}
+
+void test()
+{
+    /*
+    TFile *fout = new TFile("PDE.root", "RECREATE");
+    auto test = new TGraph("13_50_PDE.csv", "%lg, %lg");
+    test->SetName("13_50_PDE");
+    for (auto i_pnt = 0; i_pnt < test->GetN(); i_pnt++)
+    {
+        auto _x = test->GetPointX(i_pnt);
+        auto _y = test->GetPointY(i_pnt);
+        test->SetPoint(i_pnt, _x, 60 - _y);
+    }
+    test->Sort();
+    test->Write();
+    test = new TGraph("13_75_PDE.csv", "%lg, %lg");
+    test->SetName("13_75_PDE");
+    for (auto i_pnt = 0; i_pnt < test->GetN(); i_pnt++)
+    {
+        auto _x = test->GetPointX(i_pnt);
+        auto _y = test->GetPointY(i_pnt);
+        test->SetPoint(i_pnt, _x, 60 - _y);
+    }
+    test->Sort();
+    test->Write();
+    test = new TGraph("14_50_PDE.csv", "%lg, %lg");
+    test->SetName("14_50_PDE");
+    for (auto i_pnt = 0; i_pnt < test->GetN(); i_pnt++)
+    {
+        auto _x = test->GetPointX(i_pnt);
+        auto _y = test->GetPointY(i_pnt);
+    }
+    test->Sort();
+    test->Write();
+*/
+
+    //  Loop over PDE of sensors
+    TFile *fin = new TFile("PDE.root");
+    TGraph *pde_13_50 = (TGraph *)(fin->Get("13_50_PDE"));
+    TGraph *pde_13_75 = (TGraph *)(fin->Get("13_75_PDE"));
+    TGraph *pde_14_50 = (TGraph *)(fin->Get("14_50_PDE"));
+
+    //  Variables for Frank-Tamm
+    double *x = new double[1];
+    double *p = new double[2];
+    x[0] = get_relativistic_beta(kElectronMass, 11.5);
+
+    //  Graphs to check photon yield
+    TGraphErrors *g13_50 = new TGraphErrors();
+    TGraphErrors *g13_75 = new TGraphErrors();
+
+    //  Loop from 200 to 900 nm
+    auto nph_13_50 = 0.;
+    auto nph_13_75 = 0.;
+    for (auto i_lambda = 280; i_lambda <= 850; i_lambda++)
+    {
+        //  Calculate cherenkov photons emission
+        p[0] = i_lambda * 1.e-9;
+        p[1] = 1.0210;
+        auto ch_photons_1 = 1.e-11 * testbeam::simp_frank_tamm(x, p);
+        p[1] = 1.0207;
+        auto ch_photons_2 = 1.e-11 * testbeam::simp_frank_tamm(x, p);
+
+        //
+        g13_50->SetPoint(i_lambda - 280, i_lambda, (ch_photons_1 + ch_photons_2) * 0.01 * eval_with_errors(pde_13_50, i_lambda)[0]);
+        g13_75->SetPoint(i_lambda - 280, i_lambda, (ch_photons_1 + ch_photons_2) * 0.01 * eval_with_errors(pde_13_75, i_lambda)[0]);
+
+        //  Integral
+        nph_13_50 += (2 * ch_photons_1 + 2 * ch_photons_2) * 0.01 * eval_with_errors(pde_13_50, i_lambda)[0];
+        nph_13_75 += (2 * ch_photons_1 + 2 * ch_photons_2) * 0.01 * eval_with_errors(pde_13_75, i_lambda)[0];
+    }
+    cout << nph_13_50 << endl;
+    cout << nph_13_75 << endl;
+
+    TCanvas *c1 = new TCanvas();
+    auto h1 = gPad->DrawFrame(250, 0, 850, 0.16, ";photon wavelength (nm);N_{#gamma} (N / cm nm)");
+
+    g13_75->SetLineColor(kRed);
+    g13_75->SetMarkerColor(kRed);
+    g13_75->SetMarkerStyle(kFullCircle);
+    g13_75->Draw("SAME LPE");
+    g13_75->SetName("13_75_PDE");
+
+    g13_50->SetLineColor(kBlue);
+    g13_50->SetMarkerColor(kBlue);
+    g13_50->SetMarkerStyle(kFullCircle);
+    g13_50->Draw("SAME LPE");
+    g13_50->SetName("13_50_PDE");
+
+    gPad->BuildLegend();
+}
+
+/*
 void test()
 {
     auto f_dcr = new TFile("dcr_test_dcr.root");
@@ -31,14 +224,14 @@ void test()
         g_freq_corr->SetPoint(ipnt, dcr_v, nodcr_v);
         // g_freq_corr->SetPointError(ipnt, dcr_e, nodcr_e);
 
-        /*
+
                 for (auto ipnt = 0; ipnt < dcr_v * 10; ipnt++)
                     h_dcr->Fill(pos_x + 1.5 * g_random->Uniform(-1, 1), pos_y + 1.5 * g_random->Uniform(-1, 1));
                 for (auto ipnt = 0; ipnt < nodcr_v; ipnt++)
                     h_nodcr->Fill(pos_x + 1.5 * g_random->Uniform(-1, 1), pos_y + 1.5 * g_random->Uniform(-1, 1));
                 for (auto ipnt = 0; ipnt < nodcr_v / dcr_v; ipnt++)
                     h_ratdcr->Fill(pos_x + 1.5 * g_random->Uniform(-1, 1), pos_y + 1.5 * g_random->Uniform(-1, 1));
-                    */
+
 
         h_rat_val->Fill(nodcr_v / dcr_v);
     }
@@ -68,7 +261,6 @@ void test()
     g_freq_corr->Draw("SAME PE ");
 }
 
-/*
 void process_runs(std::string path = "/Users/nrubini/Analysis/ePIC/_production_repositories/ePIC-dRICH-beamtest-analysis/Data/20231010-163636/");
 
 void test()
