@@ -84,7 +84,6 @@ display(std::string recodata_infilename, std::string ringdata_infilename)
     fGaus->Draw("same");
     
     c->Update();
-    return;
     gSystem->Sleep(100);
     getchar();
     
